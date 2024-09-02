@@ -4,14 +4,15 @@ node {
       checkout scm
     }
     stage('build') {
-      	sh cd build
-	sh cmake ..
-	sh make -j8
+      sh cd build
+	    sh cmake ..
+	    sh make -j8
     }
     stage('compile') {
       echo "nothing to compile for hello.sh..."
     }
-       finally {
+  }
+  finally {
     stage('cleanup') {
       echo "doing some cleanup..."
     }
