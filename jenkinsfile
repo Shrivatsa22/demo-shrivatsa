@@ -1,20 +1,61 @@
-node {
-  try {
-    stage('checkout') {
-      checkout scm
+pipeline {
+    agent any
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout code from your version control system
+                checkout scm
+            }
+        }
+        stage('Build') {
+            steps {
+                script {
+                    // Run the build commands in a shell script
+                    sh '''
+                    mkdir -p build
+                    cd build
+                    cmake ..
+                    make -j8
+                    '''
+                }
+            }
+        }
+        stage('Static Analysis') {
+            steps {
+                script {
+                    // Run static analysis using Docker
+                    sh '''
+                    # Define the source code directory
+                    SOURCE_DIR=$(pwd)
+ 
+                    # Run static analysis using Docker container
+                    docker run --rm -v "$SOURCE_DIR":/code cppcheck/cppcheck:latest \
+                        cppcheck --enable=all --inconclusive --xml --xml-version=2 /code 2> cppcheck.xml
+ 
+                    # Check if cppcheck.xml was generated
+                    if [ -f "cppcheck.xml" ]; then
+                        echo "Static analysis completed successfully. Report generated as cppcheck.xml."
+                    else
+                        echo "Static analysis failed or no issues were found."
+                    fi
+                    '''
+                }
+            }
+            post {
+                always {
+                    // Archive the static analysis report
+                    archiveArtifacts artifacts: 'build/cppcheck.xml', allowEmptyArchive: true
+ 
+                    // Publish the static analysis results (if using a Jenkins plugin)
+                    recordIssues tools: [cppCheck(pattern: 'build/cppcheck.xml')]
+                }
+            }
+        }
     }
-    stage('build') {
-      sh cd build
-	    sh cmake ..
-	    sh make -j8
+    post {
+        always {
+            // Clean up the workspace after the build
+            cleanWs()
+        }
     }
-    stage('compile') {
-      echo "nothing to compile for hello.sh..."
-    }
-  }
-  finally {
-    stage('cleanup') {
-      echo "doing some cleanup..."
-    }
-  }
 }
